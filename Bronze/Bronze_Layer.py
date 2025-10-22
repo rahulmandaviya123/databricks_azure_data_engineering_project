@@ -1,16 +1,11 @@
-# Databricks notebook source
+# Using dbutils command to initial parameters
 dbutils.widgets.text("file_name","")
 
-# COMMAND ----------
+# store parameters
 
 p_file_name = dbutils.widgets.get("file_name")
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Data Reading
-
-# COMMAND ----------
+# Data Reading from bronze layer
 
 df = spark.readStream.format("cloudFiles")\
        .option("cloudFiles.format", "parquet")\
@@ -18,12 +13,7 @@ df = spark.readStream.format("cloudFiles")\
        .load(f"abfss://source@deltalakerg1.dfs.core.windows.net/{p_file_name}")
  
 
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Write Data
-
-# COMMAND ----------
+# Write Data in silver layer using dynamic parameters
 
 df.writeStream.format("parquet")\
     .outputMode("append")\
