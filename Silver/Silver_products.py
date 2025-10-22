@@ -2,38 +2,20 @@
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
-# COMMAND ----------
+# Reading Data from bronze layer
 
 df =spark.read.format("parquet")\
     .load("abfss://bronze@deltalakerg1.dfs.core.windows.net/products")
 
-# COMMAND ----------
-
-display(df)
-
-# COMMAND ----------
-
-df = df.drop("_rescued_data")
-df = df.withColumn("last_updated",current_timestamp())
+# Cleaning and Transform data for gold layer
+df = df.drop("_rescued_data")\
+       .withColumn("last_updated",current_timestamp())\
+       .withColumn("brand",upper(col("brand")))
  
 
-# COMMAND ----------
-
-df = df.withColumn("brand",upper(col("brand")))
- 
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## FUNCTIONS
-
-# COMMAND ----------
+# FUNCTIONS
 
 df.createOrReplaceTempView("products")
- 
-
-
-# COMMAND ----------
 
 # MAGIC %sql
 # MAGIC CREATE OR REPLACE FUNCTION databricks_cata.bronze.discount_func(p_price double)
@@ -46,13 +28,12 @@ df.createOrReplaceTempView("products")
 df = df.withColumn("discounted_price", expr("databricks_cata.bronze.discount_func(price)"))
 
 # COMMAND ----------
+# Write Data
 
 df.write.format("delta")\
     .mode("overwrite")\
     .option("path","abfss://silver@deltalakerg1.dfs.core.windows.net/products")\
     .save()
-
-# COMMAND ----------
 
 # MAGIC %sql
 # MAGIC CREATE TABLE IF NOT EXISTS databricks_cata.silver.products_silver
